@@ -88,11 +88,9 @@ const searchListings = (req, res) => {
 
     const sortedResults = optimizedListingLocations.sort((a, b) => a.total_price_in_cents - b.total_price_in_cents);
 
-    return res.json({
-      totalSpaceNeeded: totalSpaceNeeded,
-      locationsReturned: sortedResults.length,
-      results: sortedResults
-    });
+    return res.json(
+      sortedResults
+    );
   } catch (error) {
     res.status(500).json({
       success: false,
