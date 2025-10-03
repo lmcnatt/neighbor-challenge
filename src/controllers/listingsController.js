@@ -44,13 +44,8 @@ const searchListings = (req, res) => {
       return acc;
     }, {}));
 
-    // Filter out listing locations that don't have enough space
-    const validListingLocations = listingLocations.filter(listingLocation => {
-      return listingLocation.total_square_footage >= totalSpaceNeeded;
-    });
-
-    // Map through each valid listing location and find the cheapest listings combination that fits the total space needed
-    const optimizedListingLocations = validListingLocations.map(listingLocation => {
+    // Map through each listing location and find the cheapest listings combination that fits the total space needed
+    const optimizedListingLocations = listingLocations.map(listingLocation => {
       const locationListings = listings.filter(listing => listingLocation.listing_ids.includes(listing.id)).sort((a, b) => a.price_in_cents - b.price_in_cents);
       
       // Generate all possible subsets of listings at this location
