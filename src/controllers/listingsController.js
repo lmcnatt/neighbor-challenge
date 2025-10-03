@@ -1,4 +1,5 @@
 const listings = require('../../listings.json');
+const Combinatorics = require('js-combinatorics');
 
 const getAllListings = (req, res) => {
   try {
@@ -43,18 +44,59 @@ const searchListings = (req, res) => {
       return acc;
     }, {}));
 
+    // Filter out listing locations that don't have enough space
     const validListingLocations = listingLocations.filter(listingLocation => {
       return listingLocation.total_square_footage >= totalSpaceNeeded;
     });
 
-    res.json({
-      success: true,
+    // Map through each valid listing location and find the cheapest listings combination that fits the total space needed
+    const optimizedListingLocations = validListingLocations.map(listingLocation => {
+      const locationListings = listings.filter(listing => listingLocation.listing_ids.includes(listing.id)).sort((a, b) => a.price_in_cents - b.price_in_cents);
       
-      data: {
-        totalSpaceNeeded,
-        validListingLocations
-      },
-      count: validListingLocations.length
+      // Generate all possible subsets of listings at this location
+      const allPossibleSubsets = [...new Combinatorics.PowerSet(locationListings)];
+      
+      let bestCombination = null;
+      let minPrice = Infinity;
+      
+      // Check each subset to find the cheapest one that has enough space
+      allPossibleSubsets.forEach(combination => {
+        if (combination.length === 0) return;
+        
+        const totalSquareFootage = combination.reduce((sum, listing) => {
+          return sum + (listing.length * listing.width);
+        }, 0);
+        
+        if (totalSquareFootage >= totalSpaceNeeded) {
+          const totalPrice = combination.reduce((sum, listing) => {
+            return sum + listing.price_in_cents;
+          }, 0);
+          
+          if (totalPrice < minPrice) {
+            minPrice = totalPrice;
+            bestCombination = combination;
+          }
+        }
+      });
+      
+      // Return the optimized result for this location
+      if (bestCombination) {
+        return {
+          location_id: listingLocation.location_id,
+          listing_ids: bestCombination.map(listing => listing.id),
+          total_price_in_cents: minPrice
+        };
+      }
+      
+      return null;
+    }).filter(result => result !== null);
+
+    const sortedResults = optimizedListingLocations.sort((a, b) => a.total_price_in_cents - b.total_price_in_cents);
+
+    return res.json({
+      totalSpaceNeeded: totalSpaceNeeded,
+      locationsReturned: sortedResults.length,
+      results: sortedResults
     });
   } catch (error) {
     res.status(500).json({
